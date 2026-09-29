@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gästeliste">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Gästeliste</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f5f5f7;color:#111}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}
+h1{font-size:30px;margin:4px 0 16px}
+.card{background:white;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.row{display:flex;gap:9px}
+input{width:100%;font-size:20px;padding:14px 16px;border-radius:12px;border:2px solid #d1d1d6;outline:none}
+input:focus{border-color:#555}
+.addbtn{font-size:18px;font-weight:700;border:0;border-radius:12px;padding:0 18px;background:#111;color:white;white-space:nowrap}
+.search{position:sticky;top:0;background:#f5f5f7;padding:6px 0 10px;z-index:5}
+.info{margin:3px 2px 10px;color:#666;font-size:15px}
+.guest{display:flex;align-items:center;justify-content:space-between;width:100%;margin:9px 0;padding:15px 18px;border:0;border-radius:14px;background:white;font-size:21px;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.guest.checked{opacity:.55}
+.guest.checked .name{text-decoration:line-through}
+.check{min-width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:28px;border:2px solid #bbb;margin-left:12px}
+.checked .check{background:#218838;color:white;border-color:#218838}
+.empty{text-align:center;color:#777;padding:30px 10px;font-size:18px}
+.small{font-size:13px;color:#777;margin-top:8px}
+.reset{margin-top:24px;border:0;background:transparent;color:#777;font-size:14px;padding:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Gästeliste</h1>
+
+<div class="card">
+  <div class="row">
+    <input id="newName" placeholder="Neuen Namen eingeben …" autocomplete="off">
+    <button class="addbtn" id="add">Hinzufügen</button>
+  </div>
+  <div class="small">Neue Namen werden automatisch alphabetisch einsortiert.</div>
+</div>
+
+<div class="search">
+  <input id="q" type="search" placeholder="🔍 Name suchen …" autocomplete="off">
+</div>
+
+<div class="info" id="info"></div>
+<div id="list"></div>
+<button class="reset" id="reset">Alle Haken zurücksetzen</button>
+</div>
+
+<script>
+const initialGuests = ["Max Mustermann", "Anna Müller", "Lukas Hofer", "Julia Rossi", "David Gruber"];
+const guestKey = "gaesteliste_names_v2";
+const checkedKey = "gaesteliste_checked_v2";
+
+let guests = JSON.parse(localStorage.getItem(guestKey) || "null") || initialGuests;
+let checked = new Set(JSON.parse(localStorage.getItem(checkedKey) || "[]"));
+
+const q = document.getElementById("q");
+const newName = document.getElementById("newName");
+const list = document.getElementById("list");
+const info = document.getElementById("info");
+
+function sortGuests(){
+  guests.sort((a,b)=>a.localeCompare(b,"de",{sensitivity:"base"}));
+}
+function save(){
+  sortGuests();
+  localStorage.setItem(guestKey, JSON.stringify(guests));
+  localStorage.setItem(checkedKey, JSON.stringify([...checked]));
+}
+function norm(s){
+  return s.toLocaleLowerCase("de-DE").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+function addGuest(){
+  const name = newName.value.trim().replace(/\s+/g," ");
+  if(!name) return;
+  if(guests.some(n => norm(n) === norm(name))){
+    alert("Dieser Name ist schon in der Liste.");
+    return;
+  }
+  guests.push(name);
+  newName.value = "";
+  save();
+  render();
+  newName.focus();
+}
+function render(){
+  sortGuests();
+  const term = norm(q.value.trim());
+  const matches = guests.filter(n => !term || norm(n).includes(term));
+  info.textContent = term ? matches.length + " Treffer" : guests.length + " Gäste · A–Z";
+  list.innerHTML = "";
+  if(!matches.length){
+    list.innerHTML = '<div class="empty">Kein Name gefunden</div>';
+    return;
+  }
+  matches.forEach(name => {
+    const b=document.createElement("button");
+    b.className="guest"+(checked.has(name)?" checked":"");
+    const n=document.createElement("span"); n.className="name"; n.textContent=name;
+    const c=document.createElement("span"); c.className="check"; c.textContent=checked.has(name)?"✓":"";
+    b.append(n,c);
+    b.onclick=()=>{
+      checked.has(name)?checked.delete(name):checked.add(name);
+      save(); render();
+    };
+    list.appendChild(b);
+  });
+}
+document.getElementById("add").onclick=addGuest;
+newName.addEventListener("keydown", e=>{if(e.key==="Enter") addGuest();});
+q.addEventListener("input",render);
+document.getElementById("reset").onclick=()=>{
+  if(confirm("Wirklich alle Haken zurücksetzen?")){checked.clear();save();render();}
+};
+save();
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js"));
+}
+</script>
+</body>
+</html>

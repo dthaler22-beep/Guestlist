@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#111111",
-  "description": "Einfache Gästeliste zum Suchen, Hinzufügen und Abhaken.",
+  "description": "Gästeliste mit WhatsApp-Import, Datumslisten und Check-in-Statistik.",
   "icons": [
     {
       "src": "icon.svg",
